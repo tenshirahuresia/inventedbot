@@ -1,0 +1,36 @@
+javascript:(async()=>{try{
+  const s=prompt("スタジオID");if(!s)return;
+  const u=prompt("ユーザー名");if(!u)return;
+  document.body.innerHTML='<div id="log" style="background:#000;color:#0f0;padding:10px;font:13px monospace;white-space:pre-wrap;max-height:90vh;overflow:auto"></div>';
+  const log=t=>document.getElementById('log').textContent+=t+'\n';
+  log('開始: '+u+' → スタジオ '+s);
+  const t=document.cookie.match(/scratchcsrftoken=([^;]+)/)[1];
+  if(!t){alert('ログインしてください');return;}
+  let o=0,total=0,limit=40;
+  while(1){
+    const r=await fetch(`https://api.scratch.mit.edu/users/${u}/followers?limit=${limit}&offset=${o}`);
+    if(!r.ok){log('取得失敗: '+r.status);break;}
+    const j=await r.json();
+    if(!j.length){log('全フォロワー処理完了');break;}
+    log(`取得: ${o}~${o+j.length-1}`);
+    for(const f of j){
+      let ok=false,retry=0;
+      while(retry<3 && !ok){
+        try{
+          const inv=await fetch(`https://scratch.mit.edu/site-api/users/curators-in/${s}/invite_curator/?usernames=${f.username}`,{
+            method:'PUT',
+            headers:{'X-CSRFToken':t,'X-Requested-With':'XMLHttpRequest'},
+            credentials:'include'
+          });
+          if(inv.ok){ok=true;log(`${++total}: ${f.username} → 成功`);}
+          else if(inv.status===503){retry++;log(`${total+1}: ${f.username} → 503 (再試行${retry}/3)`);await new Promise(r=>setTimeout(r,30000));}
+          else{log(`${total+1}: ${f.username} → 失敗(${inv.status})`);break;}
+        }catch(e){log('エラー: '+e.message);break;}
+      }
+      if(!ok) log(`${total+1}: ${f.username} → 最終失敗`);
+      await new Promise(r=>setTimeout(r,3000));
+    }
+    o+=limit;
+  }
+  log('=== 完了！'+total+'人処理 ===');
+}catch(e){alert('エラー: '+e.message);}})();
