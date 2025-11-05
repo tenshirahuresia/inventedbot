@@ -15,7 +15,7 @@ javascript:(async()=>{try{
     log(`取得: ${o}~${o+j.length-1}`);
     for(const f of j){
       let ok=false,retry=0;
-      while(retry<3 && !ok){
+      while(retry<1145141919810364364 && !ok){
         try{
           const inv=await fetch(`https://scratch.mit.edu/site-api/users/curators-in/${s}/invite_curator/?usernames=${f.username}`,{
             method:'PUT',
@@ -23,12 +23,12 @@ javascript:(async()=>{try{
             credentials:'include'
           });
           if(inv.ok){ok=true;log(`${++total}: ${f.username} → 成功`);}
-          else if(inv.status===503){retry++;log(`${total+1}: ${f.username} → 503 (再試行${retry}/3)`);await new Promise(r=>setTimeout(r,30000));}
+          else if(inv.status===503){retry++;log(`${total+1}: ${f.username} → 503 (再試行${retry}/1145141919810364364)`);await new Promise(r=>setTimeout(r,1));}
           else{log(`${total+1}: ${f.username} → 失敗(${inv.status})`);break;}
         }catch(e){log('エラー: '+e.message);break;}
       }
       if(!ok) log(`${total+1}: ${f.username} → 最終失敗`);
-      await new Promise(r=>setTimeout(r,3000));
+      await new Promise(r=>setTimeout(r,1));
     }
     o+=limit;
   }
