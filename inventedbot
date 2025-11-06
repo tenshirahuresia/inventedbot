@@ -1,14 +1,16 @@
 javascript:(async()=>{try{
   const s=prompt("スタジオID");if(!s)return;
   const u=prompt("ユーザー名");if(!u)return;
+  const startOffset = parseInt(prompt("開始offset（デフォルト0）") || "0", 10);
   document.body.innerHTML='<div id="log" style="background:#000;color:#0f0;padding:10px;font:13px monospace;white-space:pre-wrap;max-height:90vh;overflow:auto"></div>';
   const log=t=>document.getElementById('log').textContent+=t+'\n';
-  log('開始: '+u+' → スタジオ '+s);
-  const t=document.cookie.match(/scratchcsrftoken=([^;]+)/)[1];
+  const clearLog=()=>{document.getElementById('log').textContent='ログクリア（100件ごと）\n';};
+  log('開始: '+u+' → スタジオ '+s+' (offset開始: '+startOffset+')');
+  const t=document.cookie.match(/scratchcsrftoken=([^;]+)/)?.[1];
   if(!t){alert('ログインしてください');return;}
-  let o=0,total=0,limit=40;
-  while(1){
-    const r=await fetch(`https://api.scratch.mit.edu/users/${u}/followers?limit=${limit}&offset=${o}`);
+  let o=startOffset,total=0,limit=40,logCount=0;
+  while(true){
+    const r=await fetch(`https://api.scratch.mit.edu/users/${encodeURIComponent(u)}/followers?limit=${limit}&offset=${o}`);
     if(!r.ok){log('取得失敗: '+r.status);break;}
     const j=await r.json();
     if(!j.length){log('全フォロワー処理完了');break;}
@@ -17,18 +19,19 @@ javascript:(async()=>{try{
       let ok=false,retry=0;
       while(retry<1145141919810364364 && !ok){
         try{
-          const inv=await fetch(`https://scratch.mit.edu/site-api/users/curators-in/${s}/invite_curator/?usernames=${f.username}`,{
+          const inv=await fetch(`https://scratch.mit.edu/site-api/users/curators-in/${s}/invite_curator/?usernames=${encodeURIComponent(f.username)}`,{
             method:'PUT',
             headers:{'X-CSRFToken':t,'X-Requested-With':'XMLHttpRequest'},
             credentials:'include'
           });
-          if(inv.ok){ok=true;log(`${++total}: ${f.username} → 成功`);}
-          else if(inv.status===503){retry++;log(`${total+1}: ${f.username} → 503 (再試行${retry}/1145141919810364364)`);await new Promise(r=>setTimeout(r,1));}
-          else{log(`${total+1}: ${f.username} → 失敗(${inv.status})`);break;}
+          if(inv.ok){ok=true;log(`${++total}: ${f.username} → 成功`);logCount++;}
+          else if(inv.status===503){retry++;log(`${total}: ${f.username} → 503 (再試行${retry}/1145141919810364364)`);await new Promise(r=>setTimeout(r,1));}
+          else{log(`${total}: ${f.username} → 失敗(${inv.status})`);break;}
         }catch(e){log('エラー: '+e.message);break;}
       }
-      if(!ok) log(`${total+1}: ${f.username} → 最終失敗`);
+      if(!ok) log(`${total}: ${f.username} → 最終失敗`);
       await new Promise(r=>setTimeout(r,1));
+      if(logCount >= 100){clearLog();logCount=0;}
     }
     o+=limit;
   }
